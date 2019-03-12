@@ -29,6 +29,13 @@ impl ADSR {
         }
     }
 
+    pub fn set_adsr(&mut self, a: f64, d: f64, s: f64, r: f64) {
+        self.a = a;
+        self.d = d;
+        self.s = s;
+        self.r = r;
+    }
+
     pub fn step(&mut self, signal: f64, gate: bool) -> f64 {
         let mut out_signal = signal;
         self.set_adsr_stage(gate);
