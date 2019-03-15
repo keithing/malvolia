@@ -1,11 +1,28 @@
 use data::FREQ_FROM_PITCH;
 
-pub struct MidiController {
-    note: u8,
-    pub gate: bool,
-    pub velocity: f64,
+pub struct Note {
+    pub pitch: u8,
     pub freq: f64,
+    pub velocity: f64,
+    pub gate: bool
+}
+
+impl Note {
+    fn new() -> Note {
+        Note {
+            pitch: 69,
+            freq: 440.0,
+            velocity: 100.0,
+            gate: false
+        }
+    }
+}
+
+
+pub struct MidiController {
+    pub notes: [Note; 8],
     pub adsr: (f64, f64, f64, f64),
+    pub osc_mix: [f64; 3]
 }
 
 
@@ -13,11 +30,16 @@ impl MidiController {
 
     pub fn new() -> MidiController {
         MidiController {
-            gate: false,
-            note: 69,
-            velocity: 100.0,
-            freq: 440.0,
+            notes: [Note::new(),
+                    Note::new(),
+                    Note::new(),
+                    Note::new(),
+                    Note::new(),
+                    Note::new(),
+                    Note::new(),
+                    Note::new()],
             adsr: (0.1, 0.1, 1.0, 0.1),
+            osc_mix: [1.0, 0.0, 0.0]
         }
     }
 
@@ -40,16 +62,23 @@ impl MidiController {
         }
     }
 
-    fn note_on(&mut self, note: u8, velocity: u8) {
-        self.note = note;
-        self.gate = true;
-        self.velocity = velocity as f64;
-        self.freq = FREQ_FROM_PITCH[note as usize];
+    fn note_on(&mut self, pitch: u8, velocity: u8) {
+        for note in self.notes.iter_mut() {
+            if !note.gate {
+                note.pitch = pitch;
+                note.freq = FREQ_FROM_PITCH[pitch as usize];
+                note.velocity = velocity as f64;
+                note.gate = true;
+                break;
+            }
+        }
     }
 
-    fn note_off(&mut self, note: u8) {
-        if note == self.note {
-            self.gate = false;
+    fn note_off(&mut self, pitch: u8) {
+        for i in 0..self.notes.len() {
+            if pitch == self.notes[i].pitch {
+                self.notes[i].gate = false;
+            }
         }
     }
 
@@ -58,5 +87,22 @@ impl MidiController {
         if id == 1 {self.adsr.1 = (level as f64 / 33.0 - 1.0).exp2();}
         if id == 2 {self.adsr.2 = level as f64 / 127.0;}
         if id == 3 {self.adsr.3 = (level as f64 / 33.0 - 1.0).exp2();}
+        if id == 4 {self.set_osc_mix(level)}
+    }
+
+    fn set_osc_mix(&mut self, level: u8) {
+        let reference = level as f64 / 127.0;
+        let n_points = self.osc_mix.len();
+        let spacing = 1.0 / (n_points - 1) as f64;
+        let mut point = 0.0;
+        for i in 0..n_points {
+            let dist = ((reference - point) / spacing).abs();
+            if dist >= 1.0 {
+                self.osc_mix[i] = 0.0;
+            } else {
+                self.osc_mix[i] = 1.0 - dist;
+            }
+            point += spacing;
+        }
     }
 }
