@@ -1,0 +1,2 @@
+   Compiling malvolia v0.0.1 (/mnt/e/Malvolia)
+    Finished dev [unoptimized + debuginfo] target(s) in 2.19s

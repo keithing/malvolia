@@ -27,6 +27,13 @@ def create_saw_table():
     data = ", ".join(["%.12f" % x for x in samples])
     return TEMPLATE.format(name=name, size=len(samples), data=data)
 
+def create_square_table():
+    name = "SQUARE_TABLE"
+    radians = np.linspace(0, np.pi * 2, num=NUM_SAMPLES)
+    samples = (radians > np.pi)
+    data = ", ".join(["%.12f" % x for x in samples])
+    return TEMPLATE.format(name=name, size=len(samples), data=data)
+
 def create_midi_lookup():
     name = "FREQ_FROM_PITCH"
     a4_pitch = 69
@@ -38,7 +45,10 @@ def create_midi_lookup():
 
 
 def main():
-    lines = [create_sine_table(), create_saw_table(), create_midi_lookup()]
+    lines = [create_sine_table(),
+             create_saw_table(), 
+             create_square_table(),
+             create_midi_lookup()]
     with open("src/data.rs", "w") as f:
         f.write("\n".join(lines))
 

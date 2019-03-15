@@ -65,16 +65,8 @@ impl Plugin for Malvolia {
         let samples = buffer.samples();
         let (_, outputs) = buffer.split();
         let output_count = outputs.len();
-        let mut signal: f64;
         for sample_idx in 0..samples {
-            let freq = self.midi.freq;
-            let gate = self.midi.gate;
-            let (a, d, s, r) = self.midi.adsr;
-
-            self.engine.adsr.set_adsr(a, d, s, r);
-            signal = self.engine.saw_osc.step(freq);
-            signal = self.engine.adsr.step(signal, gate);
-
+            let signal = self.engine.process_sample(&self.midi);
             for buf_idx in 0..output_count {
                 let buff = outputs.get_mut(buf_idx);
                 buff[sample_idx] = signal as f32;
