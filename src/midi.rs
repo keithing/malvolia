@@ -21,7 +21,6 @@ impl Note {
 
 pub struct MidiController {
     pub notes: [Note; 8],
-    next_note_i: usize,
     pub adsr: (f64, f64, f64, f64),
     pub osc_mix: [f64; 3]
 }
@@ -39,7 +38,6 @@ impl MidiController {
                     Note::new(),
                     Note::new(),
                     Note::new()],
-            next_note_i: 0,
             adsr: (0.1, 0.1, 1.0, 0.1),
             osc_mix: [1.0, 0.0, 0.0]
         }
@@ -65,16 +63,14 @@ impl MidiController {
     }
 
     fn note_on(&mut self, pitch: u8, velocity: u8) {
-        self.notes[self.next_note_i] = Note {
-            pitch: pitch,
-            freq: FREQ_FROM_PITCH[pitch as usize],
-            velocity: velocity as f64,
-            gate: true
-        };
-
-        self.next_note_i += 1;
-        if self.next_note_i > self.notes.len() {
-            self.next_note_i = 0;
+        for note in self.notes.iter_mut() {
+            if !note.gate {
+                note.pitch = pitch;
+                note.freq = FREQ_FROM_PITCH[pitch as usize];
+                note.velocity = velocity as f64;
+                note.gate = true;
+                break;
+            }
         }
     }
 

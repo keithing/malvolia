@@ -4,7 +4,7 @@ pub struct WaveTable {
     pub size: f64,
     pub last_step: f64,
     pub ratio: f64,
-    tables: [[f64; 2048]; 3]
+    tables: [[f64; 512]; 3]
 }
 
 impl WaveTable {

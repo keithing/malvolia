@@ -4,15 +4,15 @@ mod envelope;
 use midi::MidiController;
 
 pub struct Voice {
-    pub osc: osc::WaveTable,
-    pub adsr: envelope::ADSR
+    pub adsr: envelope::ADSR,
+    pub osc: osc::WaveTable
 }
 
 impl Voice {
     pub fn new(sample_rate: f64) -> Voice {
         Voice {
-            osc: osc::WaveTable::new(sample_rate),
-            adsr: envelope::ADSR::new(sample_rate)
+            adsr: envelope::ADSR::new(sample_rate),
+            osc: osc::WaveTable::new(sample_rate)
         }
     }
 }
@@ -46,19 +46,15 @@ impl Engine {
         let freq = note.freq;
         let gate = note.gate;
 
-        self.voices[0].adsr.set_adsr(a, d, s, r);
-        signal = self.voices[0].osc.step(freq, osc_mix);
-        signal = self.voices[0].adsr.step(signal, gate);
-
-        //let mut signal = 0.0;
-        //for (i, note) in midi.notes.iter().enumerate() {
-        //    let freq = note.freq;
-        //    let gate = note.gate;
-        //    let sound = self.voices[i].osc.step(freq, osc_mix);
-        //
-        //    self.voices[i].adsr.set_adsr(a, d, s, r);
-        //    signal += self.voices[i].adsr.step(sound, gate);
-        //}
+        let mut signal = 0.0;
+        for (i, note) in midi.notes.iter().enumerate() {
+            let freq = note.freq;
+            let gate = note.gate;
+            let sound = self.voices[i].osc.step(freq, osc_mix);
+        
+            self.voices[i].adsr.set_adsr(a, d, s, r);
+            signal += self.voices[i].adsr.step(sound, gate);
+        }
         
         return signal;
     }

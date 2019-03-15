@@ -9,7 +9,7 @@ import os
 import numpy as np
 
 
-NUM_SAMPLES = 2048
+NUM_SAMPLES = 512
 TEMPLATE = "pub static {name}: [f64; {size}] = [{data}];"
 
 
