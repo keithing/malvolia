@@ -38,7 +38,7 @@ impl MidiController {
                     Note::new(),
                     Note::new(),
                     Note::new()],
-            adsr: (0.1, 0.1, 1.0, 0.1),
+            adsr: (0.01, 0.0, 1.0, 0.1),
             osc_mix: [1.0, 0.0, 0.0]
         }
     }
@@ -83,10 +83,10 @@ impl MidiController {
     }
 
     fn push_control_change(&mut self, id: u8, level: u8) {
-        if id == 0 {self.adsr.0 = (level as f64 / 33.0 - 1.0).exp2();}
-        if id == 1 {self.adsr.1 = (level as f64 / 33.0 - 1.0).exp2();}
+        if id == 0 {self.adsr.0 = (level as f64 / 33.0).exp2() - 1.0;}
+        if id == 1 {self.adsr.1 = (level as f64 / 33.0).exp2() - 1.0;}
         if id == 2 {self.adsr.2 = level as f64 / 127.0;}
-        if id == 3 {self.adsr.3 = (level as f64 / 33.0 - 1.0).exp2();}
+        if id == 3 {self.adsr.3 = (level as f64 / 33.0).exp2() - 1.0;}
         if id == 4 {self.set_osc_mix(level)}
     }
 
