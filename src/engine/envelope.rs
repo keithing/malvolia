@@ -5,11 +5,9 @@ pub struct ADSR {
     r: f64,
     time_per_step: f64,
     last_gate: bool,
-    last_signal: f64,
-    duration: f64,
-    release_duration: f64,
-    ads_stage: bool,
-    r_stage: bool
+    ads_duration: f64,
+    r_duration: f64,
+    last_attenuate: f64
 }
 
 impl ADSR {
@@ -21,12 +19,38 @@ impl ADSR {
             s: 0.5,
             r: 1.0,
             last_gate: false,
-            last_signal: 0.0,
-            duration: 0.0,
-            release_duration: 0.0,
-            ads_stage: false,
-            r_stage: false
+            ads_duration: 0.0,
+            r_duration: 0.0,
+            last_attenuate: 0.0
         }
+    }
+
+    pub fn step(&mut self, gate: bool) -> f64 {
+        self.maybe_reset_duration(gate);
+        let attenuate: f64;
+        if gate {
+            self.ads_duration += self.time_per_step;
+            if self.ads_duration < self.a {
+                attenuate = self.ads_duration / self.a;
+            } else {
+                let decay_amount: f64;
+                if self.d > 0.0 {
+                    decay_amount = (self.ads_duration - self.a) / self.d;
+                } else {
+                    decay_amount = 0.0;
+                }
+                attenuate = (1.0 - decay_amount).max(self.s);
+            }
+        } else if (self.last_attenuate > 0.0) & (self.r > 0.0) {
+            self.r_duration += self.time_per_step;
+            let unbounded_attenuate = 1.0 - self.r_duration / self.r;
+            attenuate = unbounded_attenuate.max(0.0).min(self.last_attenuate);
+        } else {
+            attenuate = 0.0;
+        }
+        self.last_gate = gate;
+        self.last_attenuate = attenuate;
+        return attenuate
     }
 
     pub fn set_adsr(&mut self, a: f64, d: f64, s: f64, r: f64) {
@@ -36,50 +60,11 @@ impl ADSR {
         self.r = r;
     }
 
-    pub fn step(&mut self, signal: f64, gate: bool) -> f64 {
-        let mut out_signal = signal;
-        self.set_adsr_stage(gate);
-        if self.ads_stage {
-            self.duration += self.time_per_step;
-            if self.duration < self.a {
-                out_signal = out_signal * (self.duration / self.a);
-            } else {
-                let attenuate = 1.0 - (self.duration - self.a) / self.d;
-                if attenuate > self.s {
-                    out_signal = out_signal * attenuate;
-                } else {
-                    out_signal = out_signal * self.s; 
-                }
-            }
-        } else if self.r_stage {
-            if self.last_signal.abs() > 0.0 {
-                self.release_duration += self.time_per_step;
-                let attenuate = 1.0 - self.release_duration / self.r;
-                if attenuate > 0.0 {
-                    out_signal = self.s * self.last_signal * attenuate;
-                } else {
-                    out_signal = 0.0;
-                }
-            } else {
-                out_signal = 0.0;
-            } 
-        } else {
-            out_signal = 0.0;
-        }
-        self.last_gate = gate;
-        self.last_signal = signal;
-        return out_signal
-    }
-
-    fn set_adsr_stage(&mut self, gate: bool) {
+    fn maybe_reset_duration(&mut self, gate: bool) {
         if (gate == true) & (self.last_gate == false) {
-            self.ads_stage = true;
-            self.r_stage = false;
-            self.duration = 0.0;
+            self.ads_duration = 0.0;
         } else if (gate == false) & (self.last_gate == true) {
-            self.ads_stage = false;
-            self.r_stage = true;
-            self.release_duration = 0.0;
+            self.r_duration = 0.0;
         }
     }
 }

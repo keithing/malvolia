@@ -10,3 +10,6 @@ rand = "0.6.5"
 [lib]
 name = "malvolia"
 crate-type = ["cdylib"]
+
+[profile.dev]
+opt-level = 3

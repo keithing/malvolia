@@ -39,23 +39,16 @@ impl Engine {
     pub fn process_sample(&mut self, midi: &MidiController) -> f64 {
         let (a, d, s, r) = midi.adsr;
         let osc_mix = midi.osc_mix;
-
-        // Debug
-        let mut signal: f64;
-        let note = &midi.notes[0];
-        let freq = note.freq;
-        let gate = note.gate;
-
-        let mut signal = 0.0;
+        let mut output = 0.0;
         for (i, note) in midi.notes.iter().enumerate() {
             let freq = note.freq;
             let gate = note.gate;
-            let sound = self.voices[i].osc.step(freq, osc_mix);
-        
             self.voices[i].adsr.set_adsr(a, d, s, r);
-            signal += self.voices[i].adsr.step(sound, gate);
+
+            let signal = self.voices[i].osc.step(freq, osc_mix);
+            output += signal * self.voices[i].adsr.step(gate);
         }
         
-        return signal;
+        return output
     }
 }
