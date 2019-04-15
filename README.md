@@ -1,9 +1,11 @@
-# Cross Compiling
+# Malvolia
 
-This project is currently cross-compiled for Windows 10 using `mingw`.
-See [this blog post](https://crankydev.wordpress.com/2016/11/13/rust-cross-compiling-in-linux-for-windows/)
-for more details. Set target to windows with
+Malvolia is a proof of concept VST synthesizer programmed
+in Rust. It uses [rust-vst](https://github.com/rust-dsp/rust-vst)
+for the VST(2) interface and is based on wavetable synthesis.
 
-```bash
- cargo build --target=x86_64-pc-windows-gnu
-```
+# Build
+
+To build, first run `make_data.py` (requires numpy).  This
+will generate the necessary wave tables as Rust source
+code.
