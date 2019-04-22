@@ -22,7 +22,9 @@ impl Note {
 pub struct MidiController {
     pub notes: [Note; 8],
     pub adsr: (f64, f64, f64, f64),
-    pub osc_mix: [f64; 3]
+    pub cutoff: f64,
+    pub resonance: f64,
+    pub osc_mix: [f64; 2]
 }
 
 
@@ -39,7 +41,9 @@ impl MidiController {
                     Note::new(),
                     Note::new()],
             adsr: (0.01, 0.0, 1.0, 0.1),
-            osc_mix: [1.0, 0.0, 0.0]
+            osc_mix: [1.0, 0.0],
+            cutoff: 0.99,
+            resonance: 0.0,
         }
     }
 
@@ -88,21 +92,13 @@ impl MidiController {
         if id == 2 {self.adsr.2 = level as f64 / 127.0;}
         if id == 3 {self.adsr.3 = (level as f64 / 33.0).exp2() - 1.0;}
         if id == 4 {self.set_osc_mix(level)}
+        if id == 5 {self.cutoff = level as f64 / 128.0;}
+        if id == 6 {self.resonance = level as f64 / 127.0;}
     }
 
     fn set_osc_mix(&mut self, level: u8) {
-        let reference = level as f64 / 127.0;
-        let n_points = self.osc_mix.len();
-        let spacing = 1.0 / (n_points - 1) as f64;
-        let mut point = 0.0;
-        for i in 0..n_points {
-            let dist = ((reference - point) / spacing).abs();
-            if dist >= 1.0 {
-                self.osc_mix[i] = 0.0;
-            } else {
-                self.osc_mix[i] = 1.0 - dist;
-            }
-            point += spacing;
-        }
+        let x = level as f64 / 127.0;
+        self.osc_mix[0] = x;
+        self.osc_mix[1] = 1.0 - x;
     }
 }

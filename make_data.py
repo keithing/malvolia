@@ -7,33 +7,28 @@ speed up the plugin.
 import os
 
 import numpy as np
+from scipy.signal import decimate
 
+NUM_SAMPLES = 1024
+PRECISION = "%.6f"
 
-NUM_SAMPLES = 2048
-TEMPLATE = "pub static {name}: [f64; {size}] = [{data}];"
-PRECISION = "%.12f"
-
-
-def create_sine_table():
-    name = "SIN_TABLE"
-    radians = np.linspace(0, np.pi * 2, num=NUM_SAMPLES)
+def sample_sine_wave(n_samples=NUM_SAMPLES):
+    oversample_rate = 10
+    radians = np.linspace(0, np.pi * 2, num=n_samples * oversample_rate)
     samples = np.sin(radians)
-    data = ", ".join([PRECISION % x for x in samples])
-    return TEMPLATE.format(name=name, size=len(samples), data=data)
+    return decimate(samples, oversample_rate)
 
-def create_saw_table():
-    name = "SAW_TABLE"
-    radians = np.linspace(0, np.pi * 2, num=NUM_SAMPLES)
+def sample_saw_wave(n_samples=NUM_SAMPLES):
+    oversample_rate = 10
+    radians = np.linspace(0, np.pi * 2, num=n_samples * oversample_rate)
     samples = 1 - radians / np.pi
-    data = ", ".join([PRECISION % x for x in samples])
-    return TEMPLATE.format(name=name, size=len(samples), data=data)
+    return decimate(samples, oversample_rate)
 
-def create_square_table():
-    name = "SQUARE_TABLE"
-    radians = np.linspace(0, np.pi * 2, num=NUM_SAMPLES)
+def sample_square_wave(n_samples=NUM_SAMPLES):
+    oversample_rate = 10
+    radians = np.linspace(0, np.pi * 2, num=n_samples * oversample_rate)
     samples = (radians > np.pi)
-    data = ", ".join([PRECISION % x for x in samples])
-    return TEMPLATE.format(name=name, size=len(samples), data=data)
+    return decimate(samples, oversample_rate)
 
 def create_midi_lookup():
     name = "FREQ_FROM_PITCH"
@@ -42,49 +37,44 @@ def create_midi_lookup():
     notes = np.arange(128)
     freqs = np.exp2((notes - a4_pitch) / 12) * a4_freq
     data = ", ".join([PRECISION % x for x in freqs])
-    return TEMPLATE.format(name=name, size=len(freqs), data=data)
+    template = "pub static {name}: [f64; {size}] = [{data}];"
+    return template.format(name=name, size=len(freqs), data=data)
 
-def create_many_saw_tables():
-    amplitude = 1
-    freq = 20
-    tau = 2 * np.pi
-    t = 0
-    sample_rate = 44100
-    time_step = 1 / sample_rate
-    n_samples = 2048
-
-    phase = 0;
-    samples = []
-    for _ in range(n_samples):
-        y = amplitude - (amplitude / np.pi * phase)
-        samples.append(y)
-        phase = phase + ((tau * freq) / sample_rate)
-        if phase > (tau):
-            phase = phase - (tau)
-    samples = np.array(samples)
-
+def create_wavetables(samples):
+    """Prevent aliasing by applying a band pass per octave."""
+    n_octaves = int(np.log2(len(samples)) + 1)
     fft_table = np.fft.rfft(samples)
-    for _ in range(11):
-        n_harmonics = np.int((sample_rate / 2) / freq)
-        banded = fft_table.copy()
-        banded[n_harmonics:] = 0
-        banded[0] = 0
-        wave = np.fft.irfft(banded)
-        data = ", ".join([PRECISION % x for x in wave])
-        name = "SAW_TABLE_{}".format(freq)
-        yield TEMPLATE.format(name=name, size=len(samples), data=data)
-        freq = freq * 2
+    wavetable = []
+    for octave in range(n_octaves):
+        n_harmonics = 2 ** octave
+        fft_bandpass = fft_table.copy()
+        fft_bandpass[0] = 0
+        fft_bandpass[(n_harmonics + 1):] = 0
+        waveform_bandpass = np.fft.irfft(fft_bandpass)
+        wavetable.append(waveform_bandpass)
+    return wavetable
 
 
+def serialize_wavetable(wavetable, name="wavetable"):
+    n, m = len(wavetable), len(wavetable[0])
+    wavetable_strs = []
+    for waveform in wavetable:
+        waveform_str = ", ".join([PRECISION % x for x in waveform])
+        wavetable_strs.append("[" + waveform_str + "]")
+    array = "[" + ",".join(wavetable_strs) + "]"
+    template = "pub static {name}: [[f64; {m}]; {n}] = {array};"
+    return template.format(name=name, m=m, n=n, array=array)
 
 def main():
-    lines = list(create_many_saw_tables())
+    saw_table = create_wavetables(sample_saw_wave())
+    square_table = create_wavetables(sample_square_wave())
+
+    lines = []
+    lines.append(serialize_wavetable(saw_table, "SAW_TABLE"))
+    lines.append(serialize_wavetable(square_table, "SQUARE_TABLE"))
     lines.append(create_midi_lookup())
     with open("src/data.rs", "w") as f:
         f.write("\n".join(lines))
-
-
-
 
 if __name__ == "__main__":
     main()

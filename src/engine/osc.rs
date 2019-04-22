@@ -6,9 +6,24 @@ pub struct WaveTable {
     pub ratio: f64
 }
 
+
+fn get_wavetable_octave(freq: f64) -> usize {
+    if freq >= 11024.0 {return 0};
+    if freq >= 5511.0 {return 1};
+    if freq >= 2755.0 {return 2};
+    if freq >= 1377.0 {return 3};
+    if freq >= 688.0  {return 4};
+    if freq >= 343.0 {return 5};
+    if freq >= 171.0 {return 6};
+    if freq >= 85.0 {return 7};
+    if freq >= 42.0 {return 8};
+    if freq >= 20.0 {return 9};
+    return 10;
+}
+
 impl WaveTable {
     pub fn new(sample_rate: f64) -> WaveTable {
-        let size = 2048.0;
+        let size = 1024.0;
         WaveTable {
             size: size,
             last_step: 0.0,
@@ -16,7 +31,7 @@ impl WaveTable {
         }
     }
 
-    pub fn step(&mut self, freq: f64, mix: [f64; 3]) -> f64 {
+    pub fn step(&mut self, freq: f64, mix: [f64; 2]) -> f64 {
         let step_size = self.ratio * freq;
         let raw_step = step_size + self.last_step;
         let next_step = if raw_step >= self.size {
@@ -33,45 +48,17 @@ impl WaveTable {
         let rem = next_step - i;
 
 
-        let k: usize;
-        if freq <= 30.0 {
-            k = 0;
-        } else if freq <= 60.0 {
-            k = 1;
-        } else if freq <= 120.0 {
-            k = 2;
-        } else if freq <= 240.0 {
-            k = 3;
-        } else if freq <= 480.0 {
-            k = 4;
-        } else if freq <= 960.0 {
-            k = 5;
-        } else if freq <= 1920.0 {
-            k = 6;
-        } else if freq <= 3840.0 {
-            k = 7;
-        } else if freq <= 7680.0 {
-            k = 8;
-        } else if freq <= 15360.0 {
-            k = 9;
-        } else {
-            k = 10;
-        }
-        let tables = [&data::SAW_TABLE_20,
-                      &data::SAW_TABLE_40,
-                      &data::SAW_TABLE_80,
-                      &data::SAW_TABLE_160,
-                      &data::SAW_TABLE_320,
-                      &data::SAW_TABLE_640,
-                      &data::SAW_TABLE_1280,
-                      &data::SAW_TABLE_2560,
-                      &data::SAW_TABLE_5120,
-                      &data::SAW_TABLE_10240,
-                      &data::SAW_TABLE_20480];
+        let octave = get_wavetable_octave(freq);
         let mut signal = 0.0;
-        let x0 = tables[k][i as usize];
-        let x1 = tables[k][j as usize];
-        signal += (x0 + (x1 - x0) * rem);
+
+        let table = &data::SAW_TABLE[octave];
+        let table2 = &data::SQUARE_TABLE[octave];
+        let saw0 = table[i as usize];
+        let saw1 = table[j as usize];
+        let square0 = table2[i as usize];
+        let square1 = table2[j as usize];
+        signal += (saw0 + rem * (saw1 - saw0)) * mix[0];
+        signal += (square0 + rem * (square1 - square0)) * mix[1];
         self.last_step = next_step;
         return signal
     }
