@@ -24,7 +24,8 @@ pub struct MidiController {
     pub adsr: (f64, f64, f64, f64),
     pub cutoff: f64,
     pub resonance: f64,
-    pub osc_mix: [f64; 2]
+    pub osc_mix: [f64; 2],
+    pub chorus_mix: f64,
 }
 
 
@@ -44,6 +45,7 @@ impl MidiController {
             osc_mix: [1.0, 0.0],
             cutoff: 0.99,
             resonance: 0.0,
+            chorus_mix: 0.0,
         }
     }
 
@@ -94,6 +96,7 @@ impl MidiController {
         if id == 4 {self.set_osc_mix(level)}
         if id == 5 {self.cutoff = level as f64 / 128.0;}
         if id == 6 {self.resonance = level as f64 / 127.0;}
+        if id == 7 {self.chorus_mix = level as f64 / 127.0;}
     }
 
     fn set_osc_mix(&mut self, level: u8) {

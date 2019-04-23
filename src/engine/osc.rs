@@ -1,11 +1,5 @@
 use data;
 
-pub struct WaveTable {
-    pub size: f64,
-    pub last_step: f64,
-    pub ratio: f64
-}
-
 
 fn get_wavetable_octave(freq: f64) -> usize {
     if freq >= 11024.0 {return 0};
@@ -19,6 +13,12 @@ fn get_wavetable_octave(freq: f64) -> usize {
     if freq >= 42.0 {return 8};
     if freq >= 20.0 {return 9};
     return 10;
+}
+
+pub struct WaveTable {
+    pub size: f64,
+    pub last_step: f64,
+    pub ratio: f64
 }
 
 impl WaveTable {
@@ -61,5 +61,50 @@ impl WaveTable {
         signal += (square0 + rem * (square1 - square0)) * mix[1];
         self.last_step = next_step;
         return signal
+    }
+}
+
+
+pub struct SinLFO {
+    pub size: f64,
+    pub last_step: f64,
+    pub ratio: f64
+}
+
+
+impl SinLFO {
+    pub fn new(sample_rate: f64) -> SinLFO {
+        let size = 44100.0;
+        SinLFO {
+            size: size,
+            last_step: 0.0,
+            ratio: size / sample_rate
+        }
+    }
+
+    pub fn step(&mut self, freq: f64) -> f64 {
+        let step_size = self.ratio * freq;
+        let raw_step = step_size + self.last_step;
+        let next_step = if raw_step >= self.size {
+            raw_step - self.size
+        } else {
+            raw_step
+        };
+        let i = next_step.floor();
+        let j = if (i + 1.0) >= self.size {
+            i + 1.0 - self.size
+        } else {
+            i + 1.0
+        };
+        let rem = next_step - i;
+
+        let mut signal = 0.0;
+
+        let table = &data::LFO_SIN_TABLE;
+        let sin0 = table[i as usize];
+        let sin1 = table[j as usize];
+        signal += sin0 + rem * (sin1 - sin0);
+        self.last_step = next_step;
+        return signal;
     }
 }

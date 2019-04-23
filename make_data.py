@@ -12,12 +12,6 @@ from scipy.signal import decimate
 NUM_SAMPLES = 1024
 PRECISION = "%.6f"
 
-def sample_sine_wave(n_samples=NUM_SAMPLES):
-    oversample_rate = 10
-    radians = np.linspace(0, np.pi * 2, num=n_samples * oversample_rate)
-    samples = np.sin(radians)
-    return decimate(samples, oversample_rate)
-
 def sample_saw_wave(n_samples=NUM_SAMPLES):
     oversample_rate = 10
     radians = np.linspace(0, np.pi * 2, num=n_samples * oversample_rate)
@@ -29,6 +23,14 @@ def sample_square_wave(n_samples=NUM_SAMPLES):
     radians = np.linspace(0, np.pi * 2, num=n_samples * oversample_rate)
     samples = (radians > np.pi)
     return decimate(samples, oversample_rate)
+
+def create_lfo_table(n_samples=NUM_SAMPLES):
+    radians = np.linspace(0, np.pi * 2, num=n_samples)
+    samples = np.sin(radians)
+    samples = (samples + 1) / 2  # scale to 0/1 range
+    array = "[" + ", ".join([PRECISION % x for x in samples]) + "]"
+    template = "pub static {name}: [f64; {n}] = {array};"
+    return template.format(name="LFO_SIN_TABLE", n=n_samples, array=array)
 
 def create_midi_lookup():
     name = "FREQ_FROM_PITCH"
@@ -54,7 +56,6 @@ def create_wavetables(samples):
         wavetable.append(waveform_bandpass)
     return wavetable
 
-
 def serialize_wavetable(wavetable, name="wavetable"):
     n, m = len(wavetable), len(wavetable[0])
     wavetable_strs = []
@@ -72,6 +73,7 @@ def main():
     lines = []
     lines.append(serialize_wavetable(saw_table, "SAW_TABLE"))
     lines.append(serialize_wavetable(square_table, "SQUARE_TABLE"))
+    lines.append(create_lfo_table(44100))
     lines.append(create_midi_lookup())
     with open("src/data.rs", "w") as f:
         f.write("\n".join(lines))

@@ -1,3 +1,5 @@
+mod chorus;
+mod delay;
 mod osc;
 mod envelope;
 mod filter;
@@ -22,7 +24,9 @@ impl Voice {
 
 
 pub struct Engine {
-    pub voices: [Voice; 8]
+    pub voices: [Voice; 8],
+    pub delay: delay::Delay,
+    pub chorus: chorus::Chorus
 }
 
 impl Engine {
@@ -36,6 +40,8 @@ impl Engine {
                      Voice::new(sample_rate),
                      Voice::new(sample_rate),
                      Voice::new(sample_rate)],
+            delay: delay::Delay::new(),
+            chorus: chorus::Chorus::new()
         }
     }
 
@@ -44,6 +50,7 @@ impl Engine {
         let cutoff = midi.cutoff;
         let resonance = midi.resonance;
         let osc_mix = midi.osc_mix;
+        self.chorus.set_mix(midi.chorus_mix);
         let mut output = 0.0;
         for (i, note) in midi.notes.iter().enumerate() {
             let freq = note.freq;
@@ -57,6 +64,7 @@ impl Engine {
             output += signal * self.voices[i].adsr.step(gate);
         }
 
-        return output
+        output = self.chorus.step(output);
+        return output * 0.1;
     }
 }
