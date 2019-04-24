@@ -65,12 +65,12 @@ impl WaveTable {
 }
 
 
+#[derive(Copy, Clone)]
 pub struct SinLFO {
     pub size: f64,
     pub last_step: f64,
     pub ratio: f64
 }
-
 
 impl SinLFO {
     pub fn new(sample_rate: f64) -> SinLFO {

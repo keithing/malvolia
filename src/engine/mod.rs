@@ -45,13 +45,13 @@ impl Engine {
         }
     }
 
-    pub fn process_sample(&mut self, midi: &MidiController) -> f64 {
+    pub fn process_sample(&mut self, midi: &MidiController) -> (f64, f64) {
         let (a, d, s, r) = midi.adsr;
         let cutoff = midi.cutoff;
         let resonance = midi.resonance;
         let osc_mix = midi.osc_mix;
         self.chorus.set_mix(midi.chorus_mix);
-        let mut output = 0.0;
+        let mut mono_output = 0.0;
         for (i, note) in midi.notes.iter().enumerate() {
             let freq = note.freq;
             let gate = note.gate;
@@ -61,10 +61,10 @@ impl Engine {
 
             let mut signal = self.voices[i].osc.step(freq, osc_mix);
             signal = self.voices[i].filter.process(signal);
-            output += signal * self.voices[i].adsr.step(gate);
+            mono_output += signal * self.voices[i].adsr.step(gate);
         }
 
-        output = self.chorus.step(output);
-        return output * 0.1;
+        let (output_left, output_right) = self.chorus.step(mono_output);
+        return (output_left * 0.1, output_right * 0.1);
     }
 }

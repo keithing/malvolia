@@ -66,10 +66,14 @@ impl Plugin for Malvolia {
         let (_, outputs) = buffer.split();
         let output_count = outputs.len();
         for sample_idx in 0..samples {
-            let signal = self.engine.process_sample(&self.midi);
+            let (signal_left, signal_right) = self.engine.process_sample(&self.midi);
             for buf_idx in 0..output_count {
                 let buff = outputs.get_mut(buf_idx);
-                buff[sample_idx] = signal as f32;
+                if buf_idx.checked_rem(2) == Some(0) {
+                    buff[sample_idx] = signal_left as f32;
+                } else {
+                    buff[sample_idx] = signal_right as f32;
+                }
             }
         }
     }
