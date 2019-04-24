@@ -2,7 +2,7 @@ use engine::osc::SinLFO;
 
 const BUFFER_SIZE: usize = 1200;
 const MODULATION_OFFSET: f64 = 100.0;
-const NUM_VOICES: usize = 2;
+const NUM_VOICES: usize = 4;
 const BASE_OFFSET: f64 = BUFFER_SIZE as f64 - MODULATION_OFFSET - 100.0;
 const MODULATION_SPEED_HZ: f64 = 0.25;
 
