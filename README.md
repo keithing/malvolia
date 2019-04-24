@@ -14,5 +14,5 @@ code.
 
 Here are a few examples of the synth (no extra effects):
 
-[Jump - Van Halen](https://s3.amazonaws.com/keithingpub/Malvolia/jump.ogg)
-[Kids - Stranger Things](https://s3.amazonaws.com/keithingpub/Malvolia/kids.ogg)
+- [Jump - Van Halen](https://s3.amazonaws.com/keithingpub/Malvolia/jump.ogg)
+- [Kids - Stranger Things](https://s3.amazonaws.com/keithingpub/Malvolia/kids.ogg)
