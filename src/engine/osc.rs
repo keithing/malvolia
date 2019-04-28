@@ -1,65 +1,72 @@
 use data;
 
-
-fn get_wavetable_octave(freq: f64) -> usize {
-    if freq >= 11024.0 {return 0};
-    if freq >= 5511.0 {return 1};
-    if freq >= 2755.0 {return 2};
-    if freq >= 1377.0 {return 3};
-    if freq >= 688.0  {return 4};
-    if freq >= 343.0 {return 5};
-    if freq >= 171.0 {return 6};
-    if freq >= 85.0 {return 7};
-    if freq >= 42.0 {return 8};
-    if freq >= 20.0 {return 9};
-    return 10;
-}
+// wavtables are optimized to be a single array which combines tables
+// for each octave.  For example, we have a table of size 4 for the
+// highest octave, size 8 for the next highest, etc.  The length of
+// the table is therefore the sum of these octave sizes plus padding.
+// The first 4 elements are zero padded so that the table of size 4
+// is offset as the 4th index, the 256 size table has an offset of
+// 256, etc.
+const OCTAVE_SIZES: [usize; 9] = [4, 8, 16, 32, 64, 128, 256, 512, 1024];
 
 pub struct WaveTable {
-    pub size: f64,
-    pub last_step: f64,
-    pub ratio: f64
+    last_freq: f64,
+    last_step: f64,
+    freq_cutoffs: Vec<f64>,
+    step_ratios: Vec<f64>
+}
+
+fn add_and_wrap(x: f64, y: f64, size: usize) -> f64 {
+    let z = x + y;
+    if z >= (size as f64) {return z - (size as f64)};
+    return z;
 }
 
 impl WaveTable {
     pub fn new(sample_rate: f64) -> WaveTable {
-        let size = 1024.0;
+        let mut freq_cutoffs: Vec<f64> = Vec::new();
+        let mut step_ratios: Vec<f64> = Vec::new();
+        for size in OCTAVE_SIZES.iter() {
+            freq_cutoffs.push(sample_rate / *size as f64);
+            step_ratios.push(*size as f64 / sample_rate);
+        }
         WaveTable {
-            size: size,
+            last_freq: 0.0,
             last_step: 0.0,
-            ratio: size / sample_rate
+            freq_cutoffs: freq_cutoffs,
+            step_ratios: step_ratios
         }
     }
 
+    fn get_size_and_step(&self, freq: f64) -> (usize, f64) {
+        for (i, cutoff) in self.freq_cutoffs.iter().enumerate() {
+            if freq > *cutoff {
+                return (OCTAVE_SIZES[i], self.step_ratios[i] * freq);
+            }
+        }
+        let i = self.freq_cutoffs.len() - 1;
+        return (OCTAVE_SIZES[i], self.step_ratios[i] * freq);
+    }
+
     pub fn step(&mut self, freq: f64, mix: [f64; 2]) -> f64 {
-        let step_size = self.ratio * freq;
-        let raw_step = step_size + self.last_step;
-        let next_step = if raw_step >= self.size {
-            raw_step - self.size
-        } else {
-            raw_step
-        };
-        let i = next_step.floor();
-        let j = if (i + 1.0) >= self.size {
-            i + 1.0 - self.size
-        } else {
-            i + 1.0
-        };
-        let rem = next_step - i;
+        if freq != self.last_freq {
+            self.last_freq = freq;
+            self.last_step = 0.0;
+        }
+        let (size, step) = self.get_size_and_step(freq);
+        let next = add_and_wrap(self.last_step, step, size);
+        let next_floor = next.floor();
+        let next_ceil = add_and_wrap(next_floor, 1.0, size);
+        let rem = next - next_floor;
 
 
-        let octave = get_wavetable_octave(freq);
+        // size is designed to be same as offset
         let mut signal = 0.0;
-
-        let table = &data::SAW_TABLE[octave];
-        let table2 = &data::SQUARE_TABLE[octave];
-        let saw0 = table[i as usize];
-        let saw1 = table[j as usize];
-        let square0 = table2[i as usize];
-        let square1 = table2[j as usize];
-        signal += (saw0 + rem * (saw1 - saw0)) * mix[0];
-        signal += (square0 + rem * (square1 - square0)) * mix[1];
-        self.last_step = next_step;
+        let table = &data::SAW_TABLE;
+        let x = table[size + next_floor as usize];
+        let y = table[size + next_ceil as usize];
+        signal += x + rem * (y - x);
+        self.last_step = next;
         return signal
     }
 }

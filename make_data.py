@@ -7,9 +7,9 @@ speed up the plugin.
 import os
 
 import numpy as np
-from scipy.signal import decimate
+from scipy.signal import decimate, resample
 
-NUM_SAMPLES = 1024
+NUM_SAMPLES = 2048
 PRECISION = "%.6f"
 
 def sample_saw_wave(n_samples=NUM_SAMPLES):
@@ -42,37 +42,26 @@ def create_midi_lookup():
     template = "pub static {name}: [f64; {size}] = [{data}];"
     return template.format(name=name, size=len(freqs), data=data)
 
-def create_wavetables(samples):
+def create_wavetables(samples, name):
     """Prevent aliasing by applying a band pass per octave."""
-    n_octaves = int(np.log2(len(samples)) + 1)
-    fft_table = np.fft.rfft(samples)
-    wavetable = []
-    for octave in range(n_octaves):
-        n_harmonics = 2 ** octave
-        fft_bandpass = fft_table.copy()
-        fft_bandpass[0] = 0
-        fft_bandpass[(n_harmonics + 1):] = 0
-        waveform_bandpass = np.fft.irfft(fft_bandpass)
-        wavetable.append(waveform_bandpass)
-    return wavetable
-
-def serialize_wavetable(wavetable, name="wavetable"):
-    n, m = len(wavetable), len(wavetable[0])
-    wavetable_strs = []
-    for waveform in wavetable:
-        waveform_str = ", ".join([PRECISION % x for x in waveform])
-        wavetable_strs.append("[" + waveform_str + "]")
-    array = "[" + ",".join(wavetable_strs) + "]"
-    template = "pub static {name}: [[f64; {m}]; {n}] = {array};"
-    return template.format(name=name, m=m, n=n, array=array)
+    # buffer the first 4 values so that the size of wavetable is
+    # equal to its offset.  For example, if we have the octave 4
+    # we only need a wavetable of size 2 ** 4 = 16.  We want wavetable[16]
+    # to wavetable[16 + 16] to represent the cycle for this octave.
+    wavetable = [0.0, 0.0, 0.0, 0.0]
+    for octave in range(2, 11):
+        waveform_bandpass = resample(samples, 2 ** octave)
+        wavetable.extend(waveform_bandpass)
+    waveform_strs = ", ".join([PRECISION % x for x in wavetable])
+    template = "pub static {name}: [f64; {n}] = [{array}];"
+    return template.format(name=name, n=len(wavetable), array=waveform_strs)
 
 def main():
-    saw_table = create_wavetables(sample_saw_wave())
-    square_table = create_wavetables(sample_square_wave())
-
+    saw_table = create_wavetables(sample_saw_wave(), "SAW_TABLE")
+    square_table = create_wavetables(sample_square_wave(), "SQUARE_TABLE")
     lines = []
-    lines.append(serialize_wavetable(saw_table, "SAW_TABLE"))
-    lines.append(serialize_wavetable(square_table, "SQUARE_TABLE"))
+    lines.append(saw_table)
+    lines.append(square_table)
     lines.append(create_lfo_table(44100))
     lines.append(create_midi_lookup())
     with open("src/data.rs", "w") as f:
